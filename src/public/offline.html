@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oti - Sin conexión</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      text-align: center;
+      max-width: 400px;
+    }
+
+    .icon {
+      font-size: 80px;
+      margin-bottom: 20px;
+      animation: bounce 2s infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-20px); }
+    }
+
+    h1 {
+      font-size: 32px;
+      margin-bottom: 16px;
+      font-weight: 700;
+    }
+
+    p {
+      font-size: 18px;
+      line-height: 1.6;
+      margin-bottom: 32px;
+      opacity: 0.95;
+    }
+
+    .button {
+      display: inline-block;
+      background: white;
+      color: #10b981;
+      padding: 16px 32px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 16px;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .status {
+      margin-top: 32px;
+      padding: 12px 20px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      font-size: 14px;
+      backdrop-filter: blur(10px);
+    }
+
+    .online {
+      display: none;
+    }
+
+    .offline {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">📡</div>
+    <h1>Sin conexión</h1>
+    <p class="offline">
+      No puedes acceder a Oti en este momento porque no tienes conexión a internet.
+      Verifica tu conexión e intenta nuevamente.
+    </p>
+    <p class="online" style="display: none;">
+      ¡Conexión restaurada! Ya puedes volver a usar Oti.
+    </p>
+    <a href="/" class="button" onclick="location.reload(); return false;">
+      Reintentar
+    </a>
+    <div class="status">
+      <span id="status">Verificando conexión...</span>
+    </div>
+  </div>
+
+  <script>
+    // Check connection status
+    function updateOnlineStatus() {
+      const status = document.getElementById('status');
+      const offlineMsg = document.querySelector('.offline');
+      const onlineMsg = document.querySelector('.online');
+
+      if (navigator.onLine) {
+        status.textContent = '✅ Conexión restaurada';
+        offlineMsg.style.display = 'none';
+        onlineMsg.style.display = 'block';
+        
+        // Auto-reload after 2 seconds
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        status.textContent = '❌ Sin conexión a internet';
+        offlineMsg.style.display = 'block';
+        onlineMsg.style.display = 'none';
+      }
+    }
+
+    // Listen for connection changes
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+
+    // Check initial status
+    updateOnlineStatus();
+
+    // Periodic check every 5 seconds
+    setInterval(updateOnlineStatus, 5000);
+  </script>
+</body>
+</html>

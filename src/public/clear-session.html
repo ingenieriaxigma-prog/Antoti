@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Limpiar Sesión - Xigma Finance</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      color: #1f2937;
+      border-radius: 16px;
+      padding: 40px;
+      max-width: 500px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    h1 {
+      color: #10b981;
+      margin: 0 0 16px;
+    }
+    p {
+      color: #6b7280;
+      margin: 0 0 24px;
+      line-height: 1.6;
+    }
+    button {
+      background: #10b981;
+      color: white;
+      border: none;
+      padding: 12px 32px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button:hover {
+      background: #059669;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+    button:active {
+      transform: translateY(0);
+    }
+    .success {
+      background: #d1fae5;
+      color: #065f46;
+      padding: 16px;
+      border-radius: 8px;
+      margin-top: 24px;
+      display: none;
+    }
+    .icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">🔄</div>
+    <h1>Limpiar Sesión</h1>
+    <p>
+      Si experimentas problemas de autenticación, haz clic en el botón de abajo para 
+      limpiar tu sesión y volver a la pantalla de inicio de sesión.
+    </p>
+    <button onclick="clearSession()">Limpiar Sesión y Reiniciar</button>
+    <div class="success" id="success">
+      ✅ Sesión limpiada. Redirigiendo...
+    </div>
+  </div>
+
+  <script>
+    function clearSession() {
+      // Limpiar todos los datos de autenticación
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('sb-' + Object.keys(localStorage).find(k => k.startsWith('sb-')));
+      
+      // Mostrar mensaje de éxito
+      document.getElementById('success').style.display = 'block';
+      
+      // Redirigir a la página principal después de 1 segundo
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1000);
+    }
+  </script>
+</body>
+</html>
