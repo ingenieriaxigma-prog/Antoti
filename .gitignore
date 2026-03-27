@@ -2,13 +2,14 @@
 # Node
 # ========================
 node_modules/
+**/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
+pnpm-debug.log*
 
 # ========================
-# Env (CRÍTICO)
+# Env
 # ========================
 .env
 .env.*
@@ -20,6 +21,8 @@ package-lock.json
 dist/
 build/
 coverage/
+.next/
+out/
 
 # ========================
 # Logs
@@ -31,6 +34,7 @@ logs/
 # OS
 # ========================
 .DS_Store
+Thumbs.db
 
 # ========================
 # Editor
@@ -45,5 +49,6 @@ logs/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
-pubspec.lock
-build/
+.pub-cache/
+.melos_tool/
+**/build/
