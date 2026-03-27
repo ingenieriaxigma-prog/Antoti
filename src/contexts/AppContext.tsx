@@ -9,6 +9,8 @@
 import { createContext, useContext, ReactNode, useState } from 'react';
 import { Account, Transaction, Category, Budget } from '../types';
 import { getColombiaTime } from '../utils/dateUtils'; // ✅ Import getColombiaTime
+import { loadTransactions } from '../utils/api'; // ✅ Import for lazy loading
+import { useAuth } from './AuthContext'; // ✅ Import for token access
 
 interface AppContextType {
   // Data State
@@ -20,6 +22,8 @@ interface AppContextType {
   // Loading State
   isInitialLoadComplete: boolean;
   isLoadingTransactions: boolean;
+  hasMoreTransactions: boolean;
+  isLoadingMoreTransactions: boolean;
   
   // Selected Month/Year State (shared across Dashboard, Budgets, Statistics)
   selectedMonth: number;
@@ -32,6 +36,10 @@ interface AppContextType {
   setBudgets: (budgets: Budget[]) => void;
   setIsInitialLoadComplete: (value: boolean) => void;
   setIsLoadingTransactions: (value: boolean) => void;
+  setHasMoreTransactions: (value: boolean) => void;
+  
+  // Lazy loading functions
+  loadMoreTransactions: () => Promise<void>;
   
   // Setters for selected month/year
   setSelectedMonth: (month: number) => void;
@@ -45,6 +53,8 @@ interface AppProviderProps {
 }
 
 export function AppProvider({ children }: AppProviderProps) {
+  const { accessToken } = useAuth(); // ✅ Get access token for API calls
+  
   // Data State - Managed by hooks in AppContent
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -55,10 +65,42 @@ export function AppProvider({ children }: AppProviderProps) {
   const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
   
+  // Lazy loading state
+  const [hasMoreTransactions, setHasMoreTransactions] = useState(true);
+  const [isLoadingMoreTransactions, setIsLoadingMoreTransactions] = useState(false);
+  
   // Selected Month/Year - Shared across screens (Dashboard, Budgets, Statistics)
   const colombiaTime = getColombiaTime(); // ✅ FIX: Use Colombia time for initial state
   const [selectedMonth, setSelectedMonth] = useState(colombiaTime.getMonth());
   const [selectedYear, setSelectedYear] = useState(colombiaTime.getFullYear());
+
+  // Lazy loading function
+  const loadMoreTransactions = async () => {
+    if (!hasMoreTransactions || isLoadingMoreTransactions || !accessToken) return;
+    
+    setIsLoadingMoreTransactions(true);
+    try {
+      const currentCount = transactions.length;
+      const newTransactions = await loadTransactions({
+        limit: 50,
+        offset: currentCount,
+        orderBy: 'date',
+        orderDirection: 'desc'
+      });
+      
+      if (newTransactions.length < 50) {
+        setHasMoreTransactions(false); // No more transactions to load
+      }
+      
+      // Append new transactions to existing ones
+      setTransactions(prev => [...prev, ...newTransactions]);
+    } catch (error) {
+      console.error('Error loading more transactions:', error);
+      // Keep hasMoreTransactions as true to allow retry
+    } finally {
+      setIsLoadingMoreTransactions(false);
+    }
+  };
 
   const value: AppContextType = {
     // Data
@@ -70,6 +112,8 @@ export function AppProvider({ children }: AppProviderProps) {
     // Loading state
     isInitialLoadComplete,
     isLoadingTransactions,
+    hasMoreTransactions,
+    isLoadingMoreTransactions,
     
     // Selected Month/Year
     selectedMonth,
@@ -82,6 +126,12 @@ export function AppProvider({ children }: AppProviderProps) {
     setBudgets,
     setIsInitialLoadComplete,
     setIsLoadingTransactions,
+    setHasMoreTransactions,
+    
+    // Lazy loading functions
+    loadMoreTransactions,
+    
+    // Setters for selected month/year
     setSelectedMonth,
     setSelectedYear,
   };

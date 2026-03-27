@@ -56,6 +56,7 @@ import { projectId, publicAnonKey } from '../../../utils/supabase/info';
 import { HelpCenter } from '../../../components/help/HelpCenter'; // 📚 Import Help Center
 import { OnboardingTourSubtle } from '../../../components/onboarding'; // 🎓 Import Onboarding Tour Sutil
 import type { User as SupabaseUser } from '@supabase/supabase-js'; // 👤 Import User type
+import { DashboardHeaderSkeleton, DashboardTransactionsSkeleton } from '../../../components/dashboard/DashboardSkeleton'; // 💀 Import skeleton loaders
 
 // 👤 Import ProfileMenu - NEW
 import { ProfileMenu } from './ProfileMenu';
@@ -411,22 +412,23 @@ export function DashboardScreen({
     );
   }, [transactions, accounts, selectedMonth, selectedYear]);
 
-  const getDayTotal = (dayTransactions: any[]) => {
+  // ✅ Memoize getDayTotal to prevent recreation on every render
+  const getDayTotal = useCallback((dayTransactions: any[]) => {
     const income = dayTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
     const expense = dayTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
     return income - expense;
-  };
+  }, []);
 
-  const handleDeleteTransaction = () => {
+  const handleDeleteTransaction = useCallback(() => {
     if (!deleteTransactionId) return;
     onDeleteTransaction(deleteTransactionId);
     toast.success(t('transactions.deleted'));
     setDeleteTransactionId(null);
-  };
+  }, [deleteTransactionId, onDeleteTransaction, t]);
 
-  const handleEditTransaction = (transactionId: string) => {
+  const handleEditTransaction = useCallback((transactionId: string) => {
     onEditTransaction(transactionId);
-  };
+  }, [onEditTransaction]);
 
   return (
     <div className="flex flex-col mobile-screen-height bg-gray-50 dark:bg-gray-950 prevent-overscroll relative">
@@ -531,7 +533,15 @@ export function DashboardScreen({
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto content-with-fixed-header-and-nav momentum-scroll">
-        {/* Transactions Header */}
+        {/* Show skeleton while loading */}
+        {isLoadingTransactions ? (
+          <>
+            <DashboardHeaderSkeleton />
+            <DashboardTransactionsSkeleton />
+          </>
+        ) : (
+          <>
+            {/* Transactions Header - Only show when loaded */}
         <div className="bg-white dark:bg-gray-900 px-4 sm:px-6 pt-3 sm:pt-3 pb-4 sm:pb-5 border-b border-gray-200 dark:border-gray-800">
           <div className="mb-3">
             {/* Month Selector */}
@@ -759,6 +769,8 @@ export function DashboardScreen({
             />
           </div>
         </div>
+          </>
+        )}
       </div>
 
       {/* Oti FAB - Asistente Inteligente Unificado (Derecha, estilo WhatsApp) */}

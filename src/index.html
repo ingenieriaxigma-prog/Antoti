@@ -47,12 +47,122 @@
   <!-- PWA Manifest -->
   <link rel="manifest" href="/manifest.json">
   
+  <!-- Preload critical chunks for faster loading -->
+  <link rel="modulepreload" href="/assets/vendor-react-BW0Ib60u.js">
+  <link rel="modulepreload" href="/assets/index-LhCnpghe.js">
+  <link rel="modulepreload" href="/assets/feature-dashboard-Bk_8iBvv.js">
+  <link rel="preload" href="/assets/index-Bde_-g-e.css" as="style">
+  
   <!-- Preconnect para optimizar carga de fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 </head>
 <body>
+  <!-- Enhanced Fallback - Shows meaningful content immediately while JavaScript loads -->
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+      background: linear-gradient(135deg, #065f46 0%, #10b981 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    #root {
+      width: 100%;
+      height: 100vh;
+    }
+    
+    #loading-fallback {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #065f46 0%, #10b981 100%);
+      z-index: 9999;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    
+    #loading-fallback.hidden {
+      display: none !important;
+    }
+    
+    .loading-spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid rgba(255,255,255,0.2);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    
+    .loading-content {
+      color: white;
+      max-width: 400px;
+      text-align: center;
+    }
+    
+    .loading-logo {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 16px;
+      opacity: 0.9;
+    }
+    
+    .loading-title {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    
+    .loading-subtitle {
+      font-size: 16px;
+      font-weight: 400;
+      opacity: 0.9;
+      margin-bottom: 16px;
+    }
+    
+    .loading-text {
+      font-size: 14px;
+      opacity: 0.8;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+  
+  <div id="loading-fallback">
+    <div class="loading-spinner"></div>
+    <div class="loading-content">
+      <img src="/assets/769764b6ad1c637a72e4172f3a22f74ce04d9c7b.png" alt="Oti Logo" class="loading-logo" />
+      <div class="loading-title">Oti</div>
+      <div class="loading-subtitle">Tu Asistente Financiero Personal con IA</div>
+      <div class="loading-text">Cargando tu experiencia financiera...</div>
+    </div>
+  </div>
+  
   <div id="root"></div>
+  <script type="module">
+    // Hide fallback once React takes over (after a short delay to ensure rendering)
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const fallback = document.getElementById('loading-fallback');
+        if (fallback) fallback.classList.add('hidden');
+      }, 500);
+    });
+  </script>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>

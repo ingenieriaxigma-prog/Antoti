@@ -1,6 +1,6 @@
 import { ArrowLeft, TrendingDown, TrendingUp, AlertCircle } from 'lucide-react';
 import { Budget, Transaction, Category } from '../types';
-import { formatCurrency } from '../utils/format';
+import { formatCurrency } from '../utils/formatting';
 import { parseLocalDate, getColombiaTime } from '../utils/dateUtils'; // ✅ Import parseLocalDate and getColombiaTime
 import { useLocalization } from '../hooks/useLocalization';
 

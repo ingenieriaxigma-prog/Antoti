@@ -13,8 +13,18 @@ function getAccessToken(): string | null {
 
 /**
  * Get all transactions for the authenticated user from Supabase
+ * @param options - Optional pagination and filtering options
+ * @param options.limit - Maximum number of transactions to return (default: all)
+ * @param options.offset - Number of transactions to skip (default: 0)
+ * @param options.orderBy - Field to order by (default: 'date')
+ * @param options.orderDirection - Order direction 'asc' or 'desc' (default: 'desc')
  */
-export async function getTransactions(): Promise<Transaction[]> {
+export async function getTransactions(options?: {
+  limit?: number;
+  offset?: number;
+  orderBy?: string;
+  orderDirection?: 'asc' | 'desc';
+}): Promise<Transaction[]> {
   const token = getAccessToken();
   
   if (!token) {
@@ -23,7 +33,17 @@ export async function getTransactions(): Promise<Transaction[]> {
   }
 
   try {
-    const response = await fetch(`${API_BASE}/transactions`, {
+    // Build query parameters for pagination
+    const params = new URLSearchParams();
+    if (options?.limit) params.append('limit', options.limit.toString());
+    if (options?.offset) params.append('offset', options.offset.toString());
+    if (options?.orderBy) params.append('orderBy', options.orderBy);
+    if (options?.orderDirection) params.append('orderDirection', options.orderDirection);
+
+    const queryString = params.toString();
+    const url = queryString ? `${API_BASE}/transactions?${queryString}` : `${API_BASE}/transactions`;
+
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -60,7 +80,14 @@ export async function getTransactions(): Promise<Transaction[]> {
       return tx;
     });
     
-    return mappedTransactions;
+    // ✅ FRONTEND LIMIT: Si el backend devuelve todos, limitamos aquí mientras arreglamos backend
+    // El parámetro `limit` se sigue enviando por si el backend lo implementa después
+    const effectiveLimit = options?.limit || mappedTransactions.length;
+    const limitedTransactions = mappedTransactions.slice(0, effectiveLimit);
+    
+    console.log(`📥 [API] Transactions received: ${mappedTransactions.length}, returning: ${limitedTransactions.length} (limit: ${effectiveLimit})`);
+    
+    return limitedTransactions;
   } catch (error) {
     console.error('Error fetching transactions from API:', error);
     throw error;

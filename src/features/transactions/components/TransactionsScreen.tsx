@@ -14,6 +14,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { toast } from 'sonner@2.0.3';
 import { useLocalization } from '../../../hooks/useLocalization';
+import { useApp } from '../../../contexts/AppContext';
 import BottomNav from '../../../components/BottomNav';
 import {
   AlertDialog,
@@ -49,6 +50,7 @@ export function TransactionsScreen({
   const [deleteTransactionId, setDeleteTransactionId] = useState<string | null>(null);
 
   const { t } = useLocalization();
+  const { hasMoreTransactions, isLoadingMoreTransactions, loadMoreTransactions } = useApp();
 
   // ✅ Utility functions
   const formatCurrency = useCallback((amount: number) => {
@@ -214,6 +216,10 @@ export function TransactionsScreen({
           getDayTotal={getDayTotal}
           parseDate={parseDate}
           getSubcategoryName={getSubcategoryName}
+          // 🆕 Lazy loading props
+          hasMoreTransactions={hasMoreTransactions}
+          isLoadingMoreTransactions={isLoadingMoreTransactions}
+          onLoadMoreTransactions={loadMoreTransactions}
         />
       </div>
 

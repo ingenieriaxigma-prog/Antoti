@@ -30,7 +30,8 @@ export function useDataLoader() {
     setTransactions, 
     setBudgets,
     setIsInitialLoadComplete,
-    setIsLoadingTransactions
+    setIsLoadingTransactions,
+    setHasMoreTransactions
   } = useApp();
   const { setShowProductTour, setCanShowDashboardTour } = useUI(); // ← AGREGAMOS setCanShowDashboardTour
 
@@ -76,211 +77,135 @@ export function useDataLoader() {
         logger.log('🔄 Starting consolidated data load for user:', currentUser.email);
         logger.log('🔑 Using accessToken from AuthContext:', accessToken.substring(0, 20) + '...');
 
-        // ✅ Indicar que estamos cargando transacciones
-        setIsLoadingTransactions(true);
-
-        // ✅ CRITICAL FIX: Pasar el token explícitamente a las funciones API
-        // para evitar race condition con localStorage
-        logger.log('🔑 Passing token explicitly to avoid localStorage race condition');
-
-        // ✅ OPTIMIZACIÓN: Eliminar delay innecesario - Supabase ya maneja la sincronización
-        // STEP 1: Load all data from Supabase in parallel (más rápido)
-        logger.log('📥 Loading data from Supabase...');
-        const [categoriesData, accountsData, transactionsData, budgetsData] = await Promise.all([
-          loadCategories(),
-          loadAccounts(accessToken), // ← FIX: Pasar token explícitamente
-          loadTransactions(),
-          loadBudgets(),
-        ]);
-
-        logger.log('✅ Data loaded:', {
-          categories: categoriesData?.length || 0,
-          accounts: accountsData?.length || 0,
-          transactions: transactionsData?.length || 0,
-          budgets: budgetsData?.length || 0,
-        });
-
-        // STEP 2: Handle categories (create defaults if needed)
-        if (!categoriesData || categoriesData.length === 0) {
-          logger.log('⚠️ No categories found - creating default categories from constants');
-          
-          // ✅ REFACTORIZADO: Usar DEFAULT_CATEGORIES desde constants
-          logger.log(`📦 Using ${DEFAULT_CATEGORIES.length} default categories from /constants/categories.ts`);
-          
-          // ✅ FIX: Verificar token nuevamente antes de guardar
-          const currentToken = localStorage.getItem('accessToken');
-          if (!currentToken) {
-            logger.warn('⚠️ No access token available - skipping save, using in-memory defaults only');
-            setCategories(DEFAULT_CATEGORIES);
-          } else {
-            // ✅ FIX: Save categories to database immediately and set state
-            logger.log('💾 Attempting to save default categories to database...');
-            try {
-              await saveCategories(DEFAULT_CATEGORIES);
-              logger.log('✅ Default categories saved successfully to database');
-              setCategories(DEFAULT_CATEGORIES);
-              logger.log('✅ Default categories set in state');
-            } catch (error) {
-              logger.error('❌ ERROR saving default categories:', error);
-              // ✅ NO mostrar toast si es error de autenticación
-              const errorMessage = error instanceof Error ? error.message : String(error);
-              if (!errorMessage.includes('No estás autenticado')) {
-                toast.error('Error al guardar categorías por defecto');
-              }
-              // Set categories in state anyway so the UI isn't broken
-              setCategories(DEFAULT_CATEGORIES);
-            }
-          }
-        } else {
-          logger.log(`✅ Loaded ${categoriesData.length} categories from database`);
-          logger.log('📋 Categories data received:', categoriesData.map(c => ({
-            id: c.id,
-            name: c.name,
-            type: c.type,
-            subcategoriesCount: c.subcategories?.length || 0,
-            firstSubcategory: c.subcategories?.[0]
-          })));
-          setCategories(categoriesData);
-          logger.log('✅ Categories set in state via setCategories()');
-        }
-
-        // STEP 3: Handle accounts - SIMPLIFIED LOGIC
-        // REGLA: Solo crear cuentas si el usuario NO tiene NINGUNA (primera vez)
-        if (!accountsData || accountsData.length === 0) {
-          // ✅ Usuario nuevo - crear 9 cuentas por defecto (7 originales + 2 adicionales)
-          logger.log('🆕 New user - creating default accounts (ONLY ONCE)');
-          
-          const DEFAULT_ACCOUNTS: Account[] = [
-            { id: 'ac111111-0000-4000-a000-000000000001', name: 'Efectivo', type: 'cash', balance: 0, icon: 'wallet', color: '#10b981' },
-            { id: 'ac111111-0000-4000-a000-000000000002', name: 'Bancolombia', type: 'bank', balance: 0, icon: 'building-2', color: '#FFDE00' },
-            { id: 'ac111111-0000-4000-a000-000000000003', name: 'Falabella', type: 'bank', balance: 0, icon: 'building-2', color: '#00A859' },
-            { id: 'ac111111-0000-4000-a000-000000000004', name: 'BBVA', type: 'bank', balance: 0, icon: 'building-2', color: '#004481' },
-            { id: 'ac111111-0000-4000-a000-000000000005', name: 'Nequi', type: 'digital', balance: 0, icon: 'smartphone', color: '#FF006B' },
-            { id: 'ac111111-0000-4000-a000-000000000006', name: 'DaviPlata', type: 'digital', balance: 0, icon: 'smartphone', color: '#EB001B' },
-            { id: 'ac111111-0000-4000-a000-000000000007', name: 'Tarjeta de Crédito', type: 'card', balance: 0, icon: 'credit-card', color: '#ef4444' },
-            { id: 'ac111111-0000-4000-a000-000000000008', name: 'Deuda', type: 'card', balance: 0, icon: 'credit-card', color: '#dc2626' },
-            { id: 'ac111111-0000-4000-a000-000000000009', name: 'Préstamo', type: 'card', balance: 0, icon: 'credit-card', color: '#f97316' },
-          ];
-          
-          // ✅ CRITICAL FIX: Calculate balances from transactions BEFORE saving accounts
-          // This ensures accounts have correct balances immediately after login
-          if (transactionsData && transactionsData.length > 0) {
-            logger.log(`💰 Calculating balances from ${transactionsData.length} transactions...`);
-            
-            // Calculate balance for each account
-            DEFAULT_ACCOUNTS.forEach(account => {
-              const accountTransactions = transactionsData.filter(t => 
-                t.account === account.id || t.toAccount === account.id
-              );
-              
-              let balance = 0;
-              accountTransactions.forEach(t => {
-                if (t.type === 'income' && t.account === account.id) {
-                  balance += t.amount;
-                } else if (t.type === 'expense' && t.account === account.id) {
-                  balance -= t.amount;
-                } else if (t.type === 'transfer') {
-                  if (t.account === account.id) {
-                    balance -= t.amount; // Money leaving this account
-                  }
-                  if (t.toAccount === account.id) {
-                    balance += t.amount; // Money entering this account
-                  }
-                }
-              });
-              
-              account.balance = balance;
-              logger.log(`   💵 ${account.name}: $${balance.toLocaleString()}`);
-            });
-            
-            logger.log('✅ Balances calculated successfully');
-          } else {
-            logger.log('ℹ️  No transactions found - accounts will have 0 balance');
-          }
-          
-          try {
-            await saveAccounts(DEFAULT_ACCOUNTS);
-            logger.log('✅ Default accounts saved to database WITH calculated balances');
-            setAccounts(DEFAULT_ACCOUNTS);
-          } catch (error) {
-            logger.error('❌ Error saving default accounts:', error);
-            setAccounts(DEFAULT_ACCOUNTS); // Set in memory anyway
-          }
-        } else {
-          // ✅ Usuario existente - usar cuentas de BD (con balances calculados)
-          logger.log(`✅ Loaded ${accountsData.length} accounts from backend`);
-          logger.log(`   💰 Balances: ${accountsData.map(a => `${a.name}=$${a.balance.toLocaleString()}`).join(', ')}`);
-          setAccounts(accountsData);
-        }
-
-        // STEP 4: Handle transactions (always use data from Supabase)
-        logger.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-        logger.log(`📥 [STEP 11] FRONTEND - Loading transactions...`);
-        
-        if (transactionsData && transactionsData.length > 0) {
-          logger.log(`✅ Loaded ${transactionsData.length} transactions`);
-          logger.log(`📊 First transaction:`, {
-            id: transactionsData[0].id.substring(0, 8) + '...',
-            account: transactionsData[0].account || 'MISSING ❌',
-            amount: transactionsData[0].amount,
-            type: transactionsData[0].type,
-          });
-        } else {
-          logger.log(`⚠️  No transactions found in database`);
-        }
-        logger.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-        
-        setTransactions(transactionsData || []);
-        logger.log(`✅ Set ${transactionsData?.length || 0} transactions in state`);
-
-        // STEP 5: Handle budgets - NEVER create default budgets
-        // Los presupuestos se crean solo cuando el usuario los necesite
-        // porque requieren categoryId que debe existir en la base de datos
-        setBudgets(budgetsData || []);
-        logger.log(`✅ Loaded ${budgetsData?.length || 0} budgets`);
-
-        // STEP 6: Check if user should see product tour
-        const tourKey = `hasSeenProductTour_${currentUser.id}`;
-        const hasSeenTour = localStorage.getItem(tourKey);
-        
-        // 🎓 NUEVO: También verificar si el dashboard tour fue completado
-        const dashboardTourKey = `oti_dashboard_tour_completed_${currentUser.id}`;
-        const hasSeenDashboardTour = localStorage.getItem(dashboardTourKey);
-        
-        if (!hasSeenTour) {
-          logger.log('🎓 New user - will show ProductTour first');
-          setShowProductTour(true);
-          setCanShowDashboardTour(false); // ← BLOQUEAR dashboard tour hasta completar ProductTour
-        } else {
-          logger.log('✅ Returning user - ProductTour already completed');
-          setShowProductTour(false);
-          setCanShowDashboardTour(true); // ← PERMITIR dashboard tour solo si ProductTour ya se completó
-          
-          // 🎓 Si ProductTour ya fue visto pero Dashboard tour NO, marcamos flag
-          if (!hasSeenDashboardTour) {
-            logger.log('🎓 Dashboard tour pending - will be shown after transition');
-          }
-        }
-
-        // STEP 7: Mark initial load as complete
-        logger.log('✅ Initial data load complete - auto-save enabled');
+        // ✅ ULTRA-CRITICAL: setIsInitialLoadComplete(true) MUST BE FIRST
+        // Mark complete before anything else - this unblocks UI immediately
+        logger.log('✅ Setting isInitialLoadComplete=true RIGHT NOW - UI will render with empty state');
+        logger.log(`⏱️ CRITICAL TIMING: setIsInitialLoadComplete(true) at ${new Date().getTime()}`);
+        console.log(`🚀 CRITICAL TIMING: setIsInitialLoadComplete(true) at ${new Date().getTime()}`);
         setIsInitialLoadComplete(true);
 
-      } catch (error) {
-        logger.error('❌ Error loading data:', error);
+        // EVERYTHING BELOW IS NON-BLOCKING (background)
+        // setIsLoadingTransactions will control skeleton visibility
+        setIsLoadingTransactions(true);
+
+        // STEP 1: Load all data in BACKGROUND (non-blocking)
+        // These will complete in background while UI renders with empty state
+        logger.log('📥 [BACKGROUND] Loading all data (categories, accounts, budgets, transactions)...');
         
-        // ✅ Solo mostrar error si no es un error de autenticación
+        const allDataPromise = Promise.allSettled([
+          loadCategories(),
+          loadAccounts(accessToken),
+          loadBudgets(),
+          loadTransactions({ limit: 50, orderBy: 'date', orderDirection: 'desc' })
+        ])
+          .then((results) => {
+            const categoriesData = results[0].status === 'fulfilled' ? results[0].value : [];
+            const accountsData = results[1].status === 'fulfilled' ? results[1].value : [];
+            const budgetsData = results[2].status === 'fulfilled' ? results[2].value : [];
+            const transactionsData = results[3].status === 'fulfilled' ? results[3].value : [];
+
+            logger.log('✅ All data loaded in background:', {
+              categories: categoriesData?.length || 0,
+              accounts: accountsData?.length || 0,
+              budgets: budgetsData?.length || 0,
+              transactions: transactionsData?.length || 0,
+            });
+
+            // STEP 2: Handle categories
+            if (!categoriesData || categoriesData.length === 0) {
+              logger.log('📥 [BACKGROUND] Creating default categories...');
+              const currentToken = localStorage.getItem('accessToken');
+              if (!currentToken) {
+                logger.warn('⚠️ No access token available for category save');
+                setCategories(DEFAULT_CATEGORIES);
+              } else {
+                saveCategories(DEFAULT_CATEGORIES)
+                  .then(() => {
+                    logger.log('✅ Default categories saved successfully');
+                    setCategories(DEFAULT_CATEGORIES);
+                  })
+                  .catch((error) => {
+                    logger.error('❌ ERROR saving default categories:', error);
+                    setCategories(DEFAULT_CATEGORIES);
+                  });
+              }
+            } else {
+              setCategories(categoriesData);
+              logger.log('✅ Categories set from backend');
+            }
+
+            // STEP 3: Handle accounts
+            if (!accountsData || accountsData.length === 0) {
+              logger.log('📥 [BACKGROUND] Creating default accounts...');
+              const DEFAULT_ACCOUNTS: Account[] = [
+                { id: 'ac111111-0000-4000-a000-000000000001', name: 'Efectivo', type: 'cash', balance: 0, icon: 'wallet', color: '#10b981' },
+                { id: 'ac111111-0000-4000-a000-000000000002', name: 'Bancolombia', type: 'bank', balance: 0, icon: 'building-2', color: '#FFDE00' },
+                { id: 'ac111111-0000-4000-a000-000000000003', name: 'Falabella', type: 'bank', balance: 0, icon: 'building-2', color: '#00A859' },
+                { id: 'ac111111-0000-4000-a000-000000000004', name: 'BBVA', type: 'bank', balance: 0, icon: 'building-2', color: '#004481' },
+                { id: 'ac111111-0000-4000-a000-000000000005', name: 'Nequi', type: 'digital', balance: 0, icon: 'smartphone', color: '#FF006B' },
+                { id: 'ac111111-0000-4000-a000-000000000006', name: 'DaviPlata', type: 'digital', balance: 0, icon: 'smartphone', color: '#EB001B' },
+                { id: 'ac111111-0000-4000-a000-000000000007', name: 'Tarjeta de Crédito', type: 'card', balance: 0, icon: 'credit-card', color: '#ef4444' },
+                { id: 'ac111111-0000-4000-a000-000000000008', name: 'Deuda', type: 'card', balance: 0, icon: 'credit-card', color: '#dc2626' },
+                { id: 'ac111111-0000-4000-a000-000000000009', name: 'Préstamo', type: 'card', balance: 0, icon: 'credit-card', color: '#f97316' },
+              ];
+              
+              setAccounts(DEFAULT_ACCOUNTS);
+              saveAccounts(DEFAULT_ACCOUNTS)
+                .then(() => {
+                  logger.log('✅ Default accounts saved');
+                })
+                .catch((error) => {
+                  logger.error('❌ Error saving default accounts:', error);
+                });
+            } else {
+              setAccounts(accountsData);
+              logger.log('✅ Accounts set from backend');
+            }
+
+            // STEP 4: Handle budgets
+            setBudgets(budgetsData || []);
+            logger.log(`✅ Loaded ${budgetsData?.length || 0} budgets`);
+
+            // STEP 5: Handle transactions
+            setTransactions(transactionsData || []);
+            setHasMoreTransactions((transactionsData?.length || 0) >= 50);
+            logger.log(`✅ Set ${transactionsData?.length || 0} transactions in state`);
+
+            // STEP 6: Check product tour
+            const tourKey = `hasSeenProductTour_${currentUser.id}`;
+            const hasSeenTour = localStorage.getItem(tourKey);
+            const dashboardTourKey = `oti_dashboard_tour_completed_${currentUser.id}`;
+            const hasSeenDashboardTour = localStorage.getItem(dashboardTourKey);
+            
+            if (!hasSeenTour) {
+              logger.log('🎓 New user - will show ProductTour');
+              setShowProductTour(true);
+              setCanShowDashboardTour(false);
+            } else {
+              logger.log('✅ Returning user');
+              setShowProductTour(false);
+              setCanShowDashboardTour(true);
+            }
+
+            // FINAL: Mark transactions as done loading
+            logger.log('✅ All background operations complete');
+            setIsLoadingTransactions(false);
+          })
+          .catch((error) => {
+            logger.error('❌ Error loading data in background:', error);
+            setIsLoadingTransactions(false);
+          });
+
+      } catch (error) {
+        logger.error('❌ Error in loadAllData:', error);
+        setIsInitialLoadComplete(true);
+        setIsLoadingTransactions(false);
+        
         const errorMessage = error instanceof Error ? error.message : String(error);
         if (!errorMessage.includes('No estás autenticado') && 
             !errorMessage.includes('No access token')) {
           toast.error('Error al cargar datos');
         }
-        
-        // Still mark as complete even if there was an error
-        setIsInitialLoadComplete(true);
-      } finally {
-        // ✅ Siempre desactivar el loading al terminar
-        setIsLoadingTransactions(false);
       }
     };
 

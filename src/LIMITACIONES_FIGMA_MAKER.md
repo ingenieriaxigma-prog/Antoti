@@ -113,14 +113,12 @@ VITE_SUPABASE_ANON_KEY=tu_nueva_key_aqui
 VITE_SUPER_USER_EMAILS=admin@ejemplo.com
 ```
 
-### Paso 3: Modificar `/utils/supabase/info.tsx`
+### Paso 3: ✅ COMPLETADO - Credenciales migradas a variables de entorno
+
+El archivo `/utils/supabase/info.tsx` ha sido actualizado para usar variables de entorno en lugar de valores hardcodeados:
 
 ```typescript
-// ❌ ELIMINAR estas líneas (21-28):
-export const projectId = "bqfdinybjflhorauvfoo";
-export const publicAnonKey = "eyJ...";
-
-// ✅ DESCOMENTAR estas líneas (33-60):
+// ✅ IMPLEMENTADO:
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
@@ -130,6 +128,8 @@ export const projectId = supabaseUrl
 
 export const publicAnonKey = anonKey;
 ```
+
+**Estado:** ✅ Hecho - El proyecto ahora lee las credenciales desde variables de entorno.
 
 ### Paso 4: Activar Rate Limiting en Backend
 

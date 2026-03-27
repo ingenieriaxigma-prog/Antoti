@@ -3367,15 +3367,33 @@ app.get("/make-server-727b50c3/transactions", async (c) => {
     }
 
     const { userId, email } = authResult;
+    const limitParam = c.req.query('limit');
+    const offsetParam = c.req.query('offset');
+    const orderBy = c.req.query('orderBy');
+    const orderDirection = c.req.query('orderDirection');
+
+    const limit = limitParam ? parseInt(limitParam, 10) : undefined;
+    const offset = offsetParam ? parseInt(offsetParam, 10) : undefined;
+
+    const transactionOptions = {
+      limit: Number.isFinite(limit) && limit! > 0 ? limit : undefined,
+      offset: Number.isFinite(offset) && offset! >= 0 ? offset : undefined,
+    };
 
     console.log(`\n========================================`);
     console.log(`📥 GET TRANSACTIONS REQUEST`);
     console.log(`   User: ${email}`);
     console.log(`   User ID: ${userId}`);
+    console.log(`   Query params:`, {
+      limit: transactionOptions.limit ?? null,
+      offset: transactionOptions.offset ?? null,
+      orderBy: orderBy || null,
+      orderDirection: orderDirection || null,
+    });
     console.log(`========================================`);
 
     // Leer directamente de Postgres
-    const dbTransactions = await db.getTransactions(userId);
+    const dbTransactions = await db.getTransactions(userId, transactionOptions);
 
     console.log(`✅ Retrieved ${dbTransactions.length} transactions from database`);
     if (dbTransactions.length > 0) {

@@ -57,7 +57,47 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
-    outDir: 'build'
+    outDir: 'build',
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          // Vendor libraries
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'vendor-react';
+            }
+            if (id.includes('@supabase')) {
+              return 'vendor-supabase';
+            }
+            if (id.includes('recharts')) {
+              return 'vendor-charts';
+            }
+            if (id.includes('framer-motion')) {
+              return 'vendor-motion';
+            }
+            if (id.includes('@radix-ui')) {
+              return 'vendor-ui';
+            }
+            return 'vendor-other';
+          }
+          // Features
+          if (id.includes('/features/')) {
+            const feature = id.split('/features/')[1].split('/')[0];
+            return `feature-${feature}`;
+          }
+          // Components
+          if (id.includes('/components/')) {
+            return 'components';
+          }
+          // Utils
+          if (id.includes('/utils/') || id.includes('/hooks/')) {
+            return 'utils';
+          }
+        }
+      }
+    },
+    // Optimizar chunk size
+    chunkSizeWarningLimit: 1000
   },
   server: {
     port: 3000,

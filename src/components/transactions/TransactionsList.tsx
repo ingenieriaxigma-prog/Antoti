@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Receipt } from 'lucide-react';
+import { Receipt, Loader2 } from 'lucide-react';
 import { Transaction } from '../../types';
 import DayGroup from './DayGroup';
 
@@ -39,6 +39,11 @@ interface TransactionsListProps {
   onEditTransaction: (transactionId: string) => void;
   onDeleteTransaction: (transactionId: string) => void;
   
+  // Lazy loading props
+  hasMoreTransactions?: boolean;
+  isLoadingMoreTransactions?: boolean;
+  onLoadMoreTransactions?: () => void;
+  
   // Old props (optional, for backward compatibility - will be ignored)
   transactions?: Transaction[];
   categories?: any[];
@@ -59,6 +64,9 @@ const TransactionsList = memo<TransactionsListProps>(
     getSubcategoryName,
     onEditTransaction,
     onDeleteTransaction,
+    hasMoreTransactions = false,
+    isLoadingMoreTransactions = false,
+    onLoadMoreTransactions,
   }) => {
     // 🛡️ Defensive check: Ensure sortedDates is an array
     if (!sortedDates || !Array.isArray(sortedDates) || sortedDates.length === 0) {
@@ -101,6 +109,26 @@ const TransactionsList = memo<TransactionsListProps>(
             />
           );
         })}
+        
+        {/* Load More Button */}
+        {hasMoreTransactions && onLoadMoreTransactions && (
+          <div className="flex justify-center p-4">
+            <button
+              onClick={onLoadMoreTransactions}
+              disabled={isLoadingMoreTransactions}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white rounded-lg transition-colors"
+            >
+              {isLoadingMoreTransactions ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Cargando...
+                </>
+              ) : (
+                'Cargar más transacciones'
+              )}
+            </button>
+          </div>
+        )}
       </>
     );
   },

@@ -1,0 +1,25 @@
+name: antoti_mobile
+description: Antoti Mobile App — Personal Finance Assistant
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.6.1
+  go_router: ^14.8.1
+  http: ^1.6.0
+  shared_preferences: ^2.5.4
+  supabase_flutter: ^2.12.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  mocktail: ^1.0.4
+
+flutter:
+  uses-material-design: true
